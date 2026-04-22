@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自言自语日记</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #1f2937;
+            --text-primary: #e5e5e5;
+            --text-secondary: #9ca3af;
+            --accent: #4a5568;
+            --user-bubble: #3b82f6;
+            --avatar-bubble: #374151;
+            --border: #2d3748;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--bg-secondary);
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .header button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        /* Main content area */
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .main.hidden {
+            display: none;
+        }
+
+        /* Avatar and greeting */
+        .greeting-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .avatar svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .avatar .head {
+            transform-origin: center bottom;
+            animation: headMove 8s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes headMove {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-3deg); }
+            75% { transform: rotate(3deg); }
+        }
+
+        .greeting-text {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        /* Chat messages */
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            max-width: 85%;
+        }
+
+        .message.avatar-msg {
+            align-self: flex-start;
+        }
+
+        .message.user-msg {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .message-avatar svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 15px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.avatar-msg .bubble {
+            background: var(--avatar-bubble);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user-msg .bubble {
+            background: var(--user-bubble);
+            border-bottom-right-radius: 4px;
+            color: white;
+        }
+
+        /* Input area */
+        .input-area {
+            padding: 16px;
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border);
+        }
+
+        .input-area.hidden {
+            display: none;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper textarea {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 15px;
+            resize: none;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .input-wrapper textarea:focus {
+            outline: none;
+            border-color: var(--user-bubble);
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--user-bubble);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background: var(--accent);
+            cursor: not-allowed;
+        }
+
+        .finish-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 8px;
+            transition: background 0.2s;
+        }
+
+        .finish-btn:hover {
+            background: var(--accent);
+        }
+
+        .undo-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .undo-btn:hover {
+            background: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .undo-btn.visible {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Keywords Panel */
+        .keywords-panel {
+            padding: 20px;
+        }
+
+        .keywords-panel.hidden {
+            display: none;
+        }
+
+        .keywords-panel h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+
+        .keyword-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .keyword-tag {
+            background: var(--bg-card);
+            padding: 8px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .keyword-tag:hover {
+            background: var(--accent);
+        }
+
+        .keyword-tag .count {
+            background: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        .keyword-entries {
+            margin-top: 20px;
+        }
+
+        .keyword-entries h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .entry-card {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .entry-card:hover {
+            background: var(--accent);
+        }
+
+        .entry-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .entry-preview {
+            font-size: 14px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Diary List Panel */
+        .diary-list {
+            padding: 20px;
+        }
+
+        .diary-list.hidden {
+            display: none;
+        }
+
+        .diary-list h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+
+        .diary-card {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .diary-card:hover {
+            background: var(--accent);
+        }
+
+        .diary-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .diary-preview {
+            font-size: 14px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .diary-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .diary-keyword {
+            background: var(--bg-primary);
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        /* Entry View */
+        .entry-view {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .entry-view.hidden {
+            display: none;
+        }
+
+        /* Tab bar */
+        .tab-bar {
+            display: flex;
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--text-primary);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            padding: 20px;
+        }
+
+        .settings-panel.hidden {
+            display: none;
+        }
+
+        .settings-panel h2 {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .setting-label {
+            font-size: 14px;
+        }
+
+        .setting-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .danger-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .danger-btn:hover {
+            background: #b91c1c;
+        }
+
+        /* Keywords edit modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .modal h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+
+        .modal-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .modal-keyword {
+            background: var(--bg-card);
+            padding: 6px 12px;
+            border-radius: 14px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .modal-keyword .remove {
+            cursor: pointer;
+            opacity: 0.6;
+        }
+
+        .modal-keyword .remove:hover {
+            opacity: 1;
+        }
+
+        .add-keyword-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .add-keyword-input input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .add-keyword-input input:focus {
+            outline: none;
+            border-color: var(--user-bubble);
+        }
+
+        .add-keyword-input button {
+            background: var(--user-bubble);
+            border: none;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-actions button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-actions .cancel-btn {
+            background: var(--bg-card);
+            border: none;
+            color: var(--text-primary);
+        }
+
+        .modal-actions .save-btn {
+            background: var(--user-bubble);
+            border: none;
+            color: white;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <h1>自言自语日记</h1>
+            <button onclick="showSettings()" title="设置">⚙️</button>
+        </header>
+
+        <!-- Main writing area -->
+        <main class="main" id="mainArea">
+            <div class="greeting-section" id="greetingSection">
+                <div class="avatar">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g class="head">
+                            <ellipse cx="40" cy="24" rx="14" ry="16" fill="#4a5568"/>
+                            <rect x="26" y="38" width="28" height="32" rx="4" fill="#4a5568"/>
+                        </g>
+                    </svg>
+                </div>
+                <p class="greeting-text" id="greetingText">晚上好，今天想记录些什么？</p>
+            </div>
+            <div class="messages" id="messages"></div>
+        </main>
+
+        <!-- Keywords panel -->
+        <main class="keywords-panel hidden" id="keywordsPanel">
+            <button class="back-btn" onclick="showMain()">← 返回</button>
+            <h2>我的关键词</h2>
+            <div class="keyword-list" id="keywordList"></div>
+            <div class="keyword-entries" id="keywordEntries"></div>
+        </main>
+
+        <!-- Diary list panel -->
+        <main class="diary-list hidden" id="diaryListPanel">
+            <h2>我的日记</h2>
+            <div id="diaryList"></div>
+        </main>
+
+        <!-- Entry view -->
+        <main class="entry-view hidden" id="entryView">
+            <button class="back-btn" onclick="showMain()">← 返回</button>
+            <div id="entryContent"></div>
+        </main>
+
+        <!-- Settings panel -->
+        <main class="settings-panel hidden" id="settingsPanel">
+            <button class="back-btn" onclick="showMain()">← 返回</button>
+            <h2>设置</h2>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">清空所有数据</div>
+                    <div class="setting-desc">删除所有日记和关键词，此操作不可恢复</div>
+                </div>
+                <button class="danger-btn" onclick="clearAllData()">清空</button>
+            </div>
+        </main>
+
+        <div class="input-area" id="inputArea">
+            <div class="input-wrapper">
+                <button class="finish-btn" id="finishBtn" onclick="finishDiary()" style="display: none;">结束这篇</button>
+                <textarea id="messageInput" placeholder="写点什么..." rows="1" onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+                <button class="undo-btn" id="undoBtn" onclick="undoLastMessage()">↩</button>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+            </div>
+        </div>
+
+        <nav class="tab-bar">
+            <button class="tab-btn active" id="tabWrite" onclick="showMain()">
+                ✏️ 写日记
+            </button>
+            <button class="tab-btn" id="tabList" onclick="showDiaryList()">
+                📅 日记
+            </button>
+            <button class="tab-btn" id="tabKeywords" onclick="showKeywords()">
+                📊 关键词
+            </button>
+        </nav>
+
+        <!-- Keywords edit modal -->
+        <div class="modal-overlay hidden" id="keywordsModal">
+            <div class="modal">
+                <h3>编辑关键词</h3>
+                <div class="modal-keywords" id="modalKeywords"></div>
+                <div class="add-keyword-input">
+                    <input type="text" id="newKeywordInput" placeholder="添加关键词">
+                    <button onclick="addKeyword()">添加</button>
+                </div>
+                <div class="modal-actions">
+                    <button class="cancel-btn" onclick="closeKeywordsModal()">取消</button>
+                    <button class="save-btn" onclick="saveKeywords()">保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State
+        let entries = [];
+        let currentEntryId = null;
+        let editingEntryId = null;
+        let editingKeywords = [];
+        let lastMessageContent = null;
+        let lastEnterTime = 0;
+
+        // Keywords database for auto-extraction
+        const keywordDatabase = [
+            '工作', '学习', '朋友', '家人', '爱情', '心情', '健康', '运动',
+            '睡眠', '饮食', '旅行', '读书', '电影', '音乐', '购物', '美食',
+            '天气', '计划', '思考', '焦虑', '开心', '难过', '疲惫', '期待',
+            '感恩', '成长', '改变', '挑战', '收获', '困惑', '平静', '烦躁',
+            '散步', '咖啡', '阅读', '写作', '游戏', '聚会', '独处', '灵感'
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadEntries();
+            updateGreeting();
+            updateUndoButton();
+        });
+
+        // Load entries from localStorage
+        function loadEntries() {
+            const stored = localStorage.getItem('diaryEntries');
+            if (stored) {
+                entries = JSON.parse(stored);
+            }
+        }
+
+        // Save entries to localStorage
+        function saveEntries() {
+            localStorage.setItem('diaryEntries', JSON.stringify(entries));
+        }
+
+        // Get greeting based on time
+        function getGreeting() {
+            const hour = new Date().getHours();
+            if (hour >= 6 && hour < 12) {
+                return '早上好，今天想聊什么？';
+            } else if (hour >= 12 && hour < 18) {
+                return '下午好，今天怎么样？';
+            } else if (hour >= 18 && hour < 24) {
+                return '晚上好，今天想记录些什么？';
+            } else {
+                return '夜深了，还睡不着吗？';
+            }
+        }
+
+        // Update greeting text
+        function updateGreeting() {
+            document.getElementById('greetingText').textContent = getGreeting();
+        }
+
+        // Handle Enter key (double Enter to send)
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const now = Date.now();
+                if (now - lastEnterTime < 500) {
+                    // Double Enter detected, send message
+                    lastEnterTime = 0;
+                    sendMessage();
+                } else {
+                    lastEnterTime = now;
+                    // Visual hint could be added here
+                }
+            }
+        }
+
+        // Auto resize textarea
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        // Send message
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            // Create new entry if needed
+            if (!currentEntryId) {
+                currentEntryId = generateId();
+                const now = new Date();
+                entries.unshift({
+                    id: currentEntryId,
+                    date: now.toISOString().split('T')[0],
+                    time: now.toTimeString().slice(0, 5),
+                    content: text,
+                    keywords: [],
+                    messages: [
+                        { role: 'avatar', text: getGreeting() },
+                        { role: 'user', text: text }
+                    ]
+                });
+            } else {
+                // Add to existing entry
+                const entry = entries.find(e => e.id === currentEntryId);
+                if (entry) {
+                    entry.content += '\n' + text;
+                    entry.messages.push({ role: 'user', text: text });
+                }
+            }
+
+            // Store for undo
+            lastMessageContent = text;
+
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Auto extract top 3 frequent keywords
+            const entry = entries.find(e => e.id === currentEntryId);
+            if (entry && entry.keywords.length === 0) {
+                entry.keywords = extractTopKeywords(entry.content, 3);
+            }
+
+            saveEntries();
+            renderMessages();
+            updateFinishButton();
+            updateUndoButton();
+        }
+
+        // Update undo button visibility
+        function updateUndoButton() {
+            const btn = document.getElementById('undoBtn');
+            if (currentEntryId && lastMessageContent !== null) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }
+
+        // Undo last message
+        function undoLastMessage() {
+            if (!currentEntryId || lastMessageContent === null) return;
+
+            const entry = entries.find(e => e.id === currentEntryId);
+            if (!entry) return;
+
+            // Remove the last user message
+            entry.messages = entry.messages.filter(msg => msg.role !== 'user' || msg.text !== lastMessageContent);
+
+            // Remove the last line from content
+            const lines = entry.content.split('\n');
+            lines.pop();
+            entry.content = lines.join('\n');
+
+            // If no messages left except greeting, delete the entry
+            if (entry.messages.length <= 1) {
+                entries = entries.filter(e => e.id !== currentEntryId);
+                currentEntryId = null;
+                updateFinishButton();
+            }
+
+            saveEntries();
+            renderMessages();
+
+            // Hide undo button
+            lastMessageContent = null;
+            updateUndoButton();
+        }
+
+        // Update finish button visibility
+        function updateFinishButton() {
+            const btn = document.getElementById('finishBtn');
+            btn.style.display = currentEntryId ? 'block' : 'none';
+        }
+
+        // Finish current diary entry
+        function finishDiary() {
+            currentEntryId = null;
+            updateFinishButton();
+            showMain();
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Extract top N most frequent keywords from text
+        function extractTopKeywords(text, limit = 3) {
+            const counts = {};
+            const lowerText = text.toLowerCase();
+
+            keywordDatabase.forEach(kw => {
+                const regex = new RegExp(kw.toLowerCase(), 'g');
+                const matches = lowerText.match(regex);
+                if (matches) {
+                    counts[kw] = matches.length;
+                }
+            });
+
+            // Sort by frequency and return top N
+            return Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, limit)
+                .map(([kw]) => kw);
+        }
+
+        // Render messages
+        function renderMessages() {
+            const container = document.getElementById('messages');
+            const greetingSection = document.getElementById('greetingSection');
+
+            if (!currentEntryId) {
+                greetingSection.style.display = 'block';
+                container.innerHTML = '';
+                return;
+            }
+
+            greetingSection.style.display = 'none';
+
+            const entry = entries.find(e => e.id === currentEntryId);
+            if (!entry) return;
+
+            container.innerHTML = entry.messages.map(msg => `
+                <div class="message ${msg.role}-msg">
+                    ${msg.role === 'avatar' ? `
+                        <div class="message-avatar">
+                            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <g class="head">
+                                    <ellipse cx="40" cy="24" rx="14" ry="16" fill="#4a5568"/>
+                                    <rect x="26" y="38" width="28" height="32" rx="4" fill="#4a5568"/>
+                                </g>
+                            </svg>
+                        </div>
+                    ` : ''}
+                    <div class="bubble">${escapeHtml(msg.text)}</div>
+                </div>
+            `).join('');
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Navigation functions
+        function showMain() {
+            hideAllPanels();
+            document.getElementById('mainArea').classList.remove('hidden');
+            document.getElementById('inputArea').classList.remove('hidden');
+            document.getElementById('tabWrite').classList.add('active');
+            document.getElementById('tabList').classList.remove('active');
+            document.getElementById('tabKeywords').classList.remove('active');
+            renderMessages();
+        }
+
+        function showDiaryList() {
+            hideAllPanels();
+            document.getElementById('diaryListPanel').classList.remove('hidden');
+            document.getElementById('inputArea').classList.add('hidden');
+            document.getElementById('tabWrite').classList.remove('active');
+            document.getElementById('tabList').classList.add('active');
+            document.getElementById('tabKeywords').classList.remove('active');
+            renderDiaryList();
+        }
+
+        function showKeywords() {
+            hideAllPanels();
+            document.getElementById('keywordsPanel').classList.remove('hidden');
+            document.getElementById('inputArea').classList.add('hidden');
+            document.getElementById('tabWrite').classList.remove('active');
+            document.getElementById('tabList').classList.remove('active');
+            document.getElementById('tabKeywords').classList.add('active');
+            renderKeywords();
+        }
+
+        function showSettings() {
+            hideAllPanels();
+            document.getElementById('settingsPanel').classList.remove('hidden');
+            document.getElementById('inputArea').classList.add('hidden');
+        }
+
+        function hideAllPanels() {
+            document.getElementById('mainArea').classList.add('hidden');
+            document.getElementById('keywordsPanel').classList.add('hidden');
+            document.getElementById('diaryListPanel').classList.add('hidden');
+            document.getElementById('settingsPanel').classList.add('hidden');
+            document.getElementById('entryView').classList.add('hidden');
+        }
+
+        // Render diary list
+        function renderDiaryList() {
+            const container = document.getElementById('diaryList');
+
+            if (entries.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div class="empty-state-text">还没有日记，写下第一篇吧</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = entries.map(entry => `
+                <div class="diary-card" onclick="viewEntry('${entry.id}')">
+                    <div class="diary-date">${entry.date} ${entry.time}</div>
+                    <div class="diary-preview">${escapeHtml(entry.content)}</div>
+                    ${entry.keywords.length > 0 ? `
+                        <div class="diary-keywords">
+                            ${entry.keywords.map(kw => `<span class="diary-keyword">${escapeHtml(kw)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // View entry
+        function viewEntry(id) {
+            const entry = entries.find(e => e.id === id);
+            if (!entry) return;
+
+            editingEntryId = id;
+            editingKeywords = [...entry.keywords];
+
+            hideAllPanels();
+            document.getElementById('entryView').classList.remove('hidden');
+            document.getElementById('inputArea').classList.add('hidden');
+
+            document.getElementById('entryContent').innerHTML = `
+                <button class="back-btn" onclick="showDiaryList()">← 返回列表</button>
+                <div style="margin-top: 16px;">
+                    <div class="diary-date">${entry.date} ${entry.time}</div>
+                    <div style="margin-top: 16px; line-height: 1.8; white-space: pre-wrap;">${escapeHtml(entry.content)}</div>
+                    ${entry.keywords.length > 0 ? `
+                        <div class="diary-keywords" style="margin-top: 20px;">
+                            ${entry.keywords.map(kw => `<span class="diary-keyword">${escapeHtml(kw)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                    <button onclick="openKeywordsModal()" style="margin-top: 20px; background: var(--bg-card); border: none; color: var(--text-primary); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                        编辑关键词
+                    </button>
+                </div>
+            `;
+        }
+
+        // Render keywords panel
+        function renderKeywords() {
+            const keywordCounts = {};
+            entries.forEach(entry => {
+                entry.keywords.forEach(kw => {
+                    keywordCounts[kw] = (keywordCounts[kw] || 0) + 1;
+                });
+            });
+
+            const sortedKeywords = Object.entries(keywordCounts).sort((a, b) => b[1] - a[1]);
+            const container = document.getElementById('keywordList');
+
+            if (sortedKeywords.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🏷️</div>
+                        <div class="empty-state-text">还没有关键词，写日记时会自动提取</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sortedKeywords.map(([kw, count]) => `
+                <div class="keyword-tag" onclick="showEntriesByKeyword('${escapeHtml(kw)}')">
+                    ${escapeHtml(kw)} <span class="count">${count}</span>
+                </div>
+            `).join('');
+        }
+
+        // Show entries by keyword
+        function showEntriesByKeyword(keyword) {
+            const container = document.getElementById('keywordEntries');
+            const filteredEntries = entries.filter(e => e.keywords.includes(keyword));
+
+            container.innerHTML = `
+                <h3>含"${escapeHtml(keyword)}"的日记 (${filteredEntries.length})</h3>
+                ${filteredEntries.map(entry => `
+                    <div class="entry-card" onclick="viewEntry('${entry.id}')">
+                        <div class="entry-date">${entry.date} ${entry.time}</div>
+                        <div class="entry-preview">${escapeHtml(entry.content)}</div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Keywords modal
+        function openKeywordsModal() {
+            document.getElementById('keywordsModal').classList.remove('hidden');
+            renderModalKeywords();
+        }
+
+        function closeKeywordsModal() {
+            document.getElementById('keywordsModal').classList.add('hidden');
+        }
+
+        function renderModalKeywords() {
+            const container = document.getElementById('modalKeywords');
+            container.innerHTML = editingKeywords.map(kw => `
+                <div class="modal-keyword">
+                    ${escapeHtml(kw)}
+                    <span class="remove" onclick="removeKeyword('${escapeHtml(kw)}')">×</span>
+                </div>
+            `).join('');
+        }
+
+        function removeKeyword(kw) {
+            editingKeywords = editingKeywords.filter(k => k !== kw);
+            renderModalKeywords();
+        }
+
+        function addKeyword() {
+            const input = document.getElementById('newKeywordInput');
+            const kw = input.value.trim();
+
+            if (kw && !editingKeywords.includes(kw)) {
+                editingKeywords.push(kw);
+                input.value = '';
+                renderModalKeywords();
+            }
+        }
+
+        function saveKeywords() {
+            const entry = entries.find(e => e.id === editingEntryId);
+            if (entry) {
+                entry.keywords = editingKeywords;
+                saveEntries();
+            }
+            closeKeywordsModal();
+            viewEntry(editingEntryId);
+        }
+
+        // Clear all data
+        function clearAllData() {
+            if (confirm('确定要清空所有日记数据吗？此操作不可恢复。')) {
+                entries = [];
+                currentEntryId = null;
+                saveEntries();
+                showMain();
+            }
+        }
+    </script>
+</body>
+</html>
