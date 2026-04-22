@@ -523,6 +523,20 @@
             background: #b91c1c;
         }
 
+        .secondary-btn {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .secondary-btn:hover {
+            background: var(--accent);
+        }
+
         /* Keywords edit modal */
         .modal-overlay {
             position: fixed;
@@ -701,6 +715,27 @@
             <h2>设置</h2>
             <div class="setting-item">
                 <div>
+                    <div class="setting-label">自动备份</div>
+                    <div class="setting-desc" id="backupStatus">已自动备份</div>
+                </div>
+                <button class="secondary-btn" onclick="showBackupManage()">管理</button>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">导出日记</div>
+                    <div class="setting-desc">将所有日记导出为 JSON 文件保存</div>
+                </div>
+                <button class="secondary-btn" onclick="exportData()">导出</button>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">导入日记</div>
+                    <div class="setting-desc">从 JSON 文件导入日记，会覆盖现有数据</div>
+                </div>
+                <button class="secondary-btn" onclick="importData()">导入</button>
+            </div>
+            <div class="setting-item">
+                <div>
                     <div class="setting-label">清空所有数据</div>
                     <div class="setting-desc">删除所有日记和关键词，此操作不可恢复</div>
                 </div>
@@ -770,19 +805,180 @@
             loadEntries();
             updateGreeting();
             updateUndoButton();
+            updateBackupStatus();
         });
 
         // Load entries from localStorage
         function loadEntries() {
             const stored = localStorage.getItem('diaryEntries');
             if (stored) {
-                entries = JSON.parse(stored);
+                const parsed = JSON.parse(stored);
+                // If current data is empty but we have entries in storage, use them
+                if (parsed.length > 0) {
+                    entries = parsed;
+                }
+            }
+            // If still empty, try to restore from latest backup
+            if (entries.length === 0) {
+                const backups = JSON.parse(localStorage.getItem('diaryBackups') || '[]');
+                if (backups.length > 0 && backups[0].data.length > 0) {
+                    entries = backups[0].data;
+                    currentEntryId = null;
+                    // Don't call saveEntries here - the backup data is already in localStorage
+                    // The next actual user save will create a proper backup
+                }
             }
         }
 
         // Save entries to localStorage
         function saveEntries() {
             localStorage.setItem('diaryEntries', JSON.stringify(entries));
+            createBackup();
+        }
+
+        // Create a backup
+        function createBackup() {
+            const backups = JSON.parse(localStorage.getItem('diaryBackups') || '[]');
+            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const timestamp = Date.now();
+
+            // Check if we already have a backup for today
+            const todayIndex = backups.findIndex(b => b.date === today);
+
+            const backup = {
+                timestamp: timestamp,
+                date: today,
+                time: now.toTimeString().slice(0, 5),
+                count: entries.length,
+                data: entries
+            };
+
+            if (todayIndex !== -1) {
+                // Replace today's backup
+                backups[todayIndex] = backup;
+            } else {
+                // Add new backup
+                backups.unshift(backup);
+            }
+
+            // Keep only the latest 3 days of backups
+            const threeDaysAgo = timestamp - (3 * 24 * 60 * 60 * 1000);
+            const filtered = backups.filter(b => b.timestamp > threeDaysAgo);
+            localStorage.setItem('diaryBackups', JSON.stringify(filtered));
+            updateBackupStatus();
+        }
+
+        // Get backup status info
+        function getBackupStatus() {
+            const backups = JSON.parse(localStorage.getItem('diaryBackups') || '[]');
+            if (backups.length === 0) return null;
+            return {
+                count: backups.length,
+                latest: backups[0]
+            };
+        }
+
+        // Update backup status display
+        function updateBackupStatus() {
+            const status = getBackupStatus();
+            const statusEl = document.getElementById('backupStatus');
+            if (!status) {
+                statusEl.textContent = '暂无备份';
+                return;
+            }
+            statusEl.textContent = `最近备份: ${status.latest.date} ${status.latest.time} (${status.count}天)`;
+        }
+
+        // Restore from a specific backup
+        function restoreFromBackup(backupIndex) {
+            const backups = JSON.parse(localStorage.getItem('diaryBackups') || '[]');
+            if (backups[backupIndex]) {
+                if (confirm(`确定要恢复到 ${backups[backupIndex].date} 的备份吗？当前数据将被覆盖。`)) {
+                    entries = backups[backupIndex].data;
+                    currentEntryId = null;
+                    saveEntries();
+                    renderMessages();
+                    updateFinishButton();
+                    alert(`已恢复到 ${backups[backupIndex].date} 的备份`);
+                }
+            }
+        }
+
+        // Show backup management
+        function showBackupManage() {
+            const backups = JSON.parse(localStorage.getItem('diaryBackups') || '[]');
+            if (backups.length === 0) {
+                alert('暂无备份可恢复');
+                return;
+            }
+            const msg = backups.slice(0, 10).map((b, i) =>
+                `${i + 1}. ${b.date} ${b.time} (${b.count}篇日记)`
+            ).join('\n') + '\n\n输入序号恢复，或点击取消';
+            const input = prompt(msg + '\n\n最新备份在最上面:');
+            if (input) {
+                const idx = parseInt(input) - 1;
+                if (idx >= 0 && idx < backups.length) {
+                    restoreFromBackup(idx);
+                }
+            }
+        }
+
+        // Export data to JSON file
+        function exportData() {
+            if (entries.length === 0) {
+                alert('没有日记数据可导出');
+                return;
+            }
+            const exportData = {
+                version: 1,
+                exportDate: new Date().toISOString(),
+                entries: entries
+            };
+            const json = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `自言自语日记_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Import data from JSON file
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        if (!imported.entries || !Array.isArray(imported.entries)) {
+                            alert('文件格式不正确');
+                            return;
+                        }
+                        const count = imported.entries.length;
+                        if (confirm(`发现 ${count} 篇日记。确定要导入吗？当前数据将被完全覆盖。`)) {
+                            entries = imported.entries;
+                            currentEntryId = null;
+                            saveEntries();
+                            renderMessages();
+                            updateFinishButton();
+                            alert(`成功导入 ${count} 篇日记`);
+                        }
+                    } catch (err) {
+                        alert('文件读取失败: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         }
 
         // Get greeting based on time
@@ -1030,6 +1226,7 @@
             hideAllPanels();
             document.getElementById('settingsPanel').classList.remove('hidden');
             document.getElementById('inputArea').classList.add('hidden');
+            updateBackupStatus();
         }
 
         function hideAllPanels() {
